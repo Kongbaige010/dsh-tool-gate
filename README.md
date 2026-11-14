@@ -22,11 +22,34 @@ A task usually needs 0–3 of them. This plugin turns that cost into 0 and opens
 
 ## Install
 
-**Option 1 (recommended)** — DSH → **Plugins** → **Add plugin** → choose this directory.
+Three sources work; pick one.
 
-**Option 2** — ask the agent: `plugin_manager(install_bundle, target="<absolute path to this directory>")`.
+**1. Straight from GitHub (no clone, recommended today)**
 
-Restart DSH after installing (the bundle has a Host half and a Client half).
+Ask the agent:
+
+```text
+plugin_manager(install_bundle, target="github:Kongbaige010/dsh-tool-gate")
+```
+
+or in the UI: **Plugins** → **Add plugin** → paste `https://github.com/Kongbaige010/dsh-tool-gate`.
+
+**2. From a local directory** (for development or offline machines)
+
+```text
+git clone https://github.com/Kongbaige010/dsh-tool-gate
+plugin_manager(install_bundle, target="<absolute path to the cloned directory>")
+```
+
+or **Plugins** → **Add plugin** → choose that directory.
+
+**3. From npm** (once published)
+
+```text
+plugin_manager(install_bundle, target="@kongbaige010/dsh-tool-gate")
+```
+
+**Restart DSH after installing** — the bundle has a Host half and a Client half, and the badge appears only after the page reloads.
 
 ## Usage
 

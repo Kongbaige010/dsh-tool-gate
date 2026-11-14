@@ -22,11 +22,34 @@ MCP 服务不是「一个服务一个工具」，而是**一个服务挂几十�
 
 ## 安装
 
-**方式一（推荐）**：DSH → **插件** → **添加插件** → 选择本目录。
+三种来源都支持，任选一种。
 
-**方式二**：让 Agent 安装 —— `plugin_manager(install_bundle, target="<本目录绝对路径>")`。
+**方式一：直接从 GitHub 装（不用克隆，当前最省事）**
 
-装好后**重启 DSH** 生效（插件由 Host 侧与 Client 侧两部分组成）。
+对 Agent 说：
+
+```text
+plugin_manager(install_bundle, target="github:Kongbaige010/dsh-tool-gate")
+```
+
+或界面操作：**插件** → **添加插件** → 粘贴 `https://github.com/Kongbaige010/dsh-tool-gate`。
+
+**方式二：从本地目录装（开发或离线机器）**
+
+```text
+git clone https://github.com/Kongbaige010/dsh-tool-gate
+plugin_manager(install_bundle, target="<克隆下来的目录绝对路径>")
+```
+
+或 **插件** → **添加插件** → 选择该目录。
+
+**方式三：从 npm 装（发布之后）**
+
+```text
+plugin_manager(install_bundle, target="@kongbaige010/dsh-tool-gate")
+```
+
+**装好后必须重启 DSH**——插件由 Host 侧与 Client 侧两部分组成，徽章要等页面重新加载后才出现。
 
 ## 用法
 
