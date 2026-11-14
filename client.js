@@ -19,7 +19,7 @@
  */
 
 window.__ModuleLoader__.load({
-  id: '@kongbaige010/dsh-tool-gate-badge',
+  id: '@kongbaige010/dsh-tool-gate',
   factory(require) {
     const React = require('react')
     const h = React.createElement
