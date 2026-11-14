@@ -1,0 +1,134 @@
+<!doctype html>
+<!--
+  Reproducible source for docs/images/badge-light.png.
+
+  Every value below is copied from client.js (CHIP / CARD / HEAD / ROW …) so the
+  picture cannot drift away from the real component. Colours are the light-theme
+  values of the DSH aliases used by the badge:
+    --dsw-alias-bg-layer-1        → #f9fafa  (card surface)
+    --dsw-alias-border-l2         → rgba(0,0,0,.09)
+    --dsw-alias-label-primary     → #1f2328
+    --dsw-alias-label-secondary   → #7d838c
+    --dsw-alias-label-tertiary    → #a4a9b0
+    --dsw-alias-text-3 / fill-2   → chip ink / chip fill
+
+  Render with:
+    chrome --headless=new --disable-gpu --hide-scrollbars \
+           --force-device-scale-factor=2 --window-size=520,376 \
+           --screenshot=docs/images/badge-light.png docs/assets/badge-preview.html
+-->
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    width: 520px; height: 376px; overflow: hidden;
+    background: #f2f3f5;
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    color: #1f2328;
+    -webkit-font-smoothing: antialiased;
+  }
+  .stage { padding: 20px 22px; }
+
+  .caption {
+    font-size: 11.5px; color: #8b9199; letter-spacing: .02em;
+    margin: 0 0 7px 2px;
+  }
+
+  /* ---- the assistant action row -------------------------------------- */
+  .row {
+    display: flex; align-items: center; gap: 2px;
+    height: 34px; padding: 0 10px;
+    background: #fff; border: 1px solid rgba(0,0,0,.06);
+    border-radius: 9px;
+  }
+  .icon {
+    width: 26px; height: 26px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #8b9199;
+  }
+  .icon svg { width: 15px; height: 15px; }
+
+  /* chip — copied from CHIP in client.js */
+  .chip {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 4px; height: 20px; padding: 0 7px; margin: 0 2px;
+    border-radius: 10px; font-size: 11px; line-height: 1;
+    font-variant-numeric: tabular-nums; white-space: nowrap; flex: 0 0 auto;
+    color: #78808a; background: rgba(128,128,128,.10);
+  }
+  .chip.is-hot { color: #4b5563; background: rgba(128,128,128,.17); }
+  .meta { margin-left: auto; display: flex; align-items: center; gap: 10px;
+          font-size: 11.5px; color: #9aa0a8; font-variant-numeric: tabular-nums; }
+
+  /* ---- connector ------------------------------------------------------ */
+  .link { display: flex; align-items: center; gap: 8px; margin: 9px 0 9px 18px;
+          font-size: 11.5px; color: #9aa0a8; }
+  .link .bar { width: 1px; height: 15px; background: rgba(0,0,0,.12); }
+  .link .dash { width: 18px; height: 1px; background:
+      repeating-linear-gradient(90deg, rgba(0,0,0,.22) 0 3px, transparent 3px 6px); }
+
+  /* ---- the hover card — copied from CARD/HEAD/ROW in client.js -------- */
+  .card {
+    width: 340px; margin-left: 34px; padding: 14px 16px;
+    border-radius: 10px; border: 1px solid rgba(0,0,0,.09);
+    background: #f9fafa;
+    box-shadow: 0 2px 8px rgba(0,0,0,.18);
+    font-size: 13px; line-height: 1.5; font-variant-numeric: tabular-nums;
+  }
+  .head { display: flex; align-items: center; gap: 7px; }
+  .head .glyph { width: 16px; height: 16px; flex: none; opacity: .75; color: #7d838c; }
+  .head .title { font-size: 15px; font-weight: 600; white-space: nowrap; }
+  .head .value { margin-left: auto; padding-left: 12px; font-size: 17px;
+                 font-weight: 700; line-height: 1.2; white-space: nowrap; }
+  .head .unit { margin-left: 4px; font-size: 12px; font-weight: 500; color: #7d838c; }
+  .divider { height: 1px; margin: 12px 0 10px; background: rgba(0,0,0,.09); }
+  .r { display: flex; align-items: baseline; justify-content: space-between;
+       gap: 18px; padding: 4px 0; }
+  .r .k { color: #7d838c; font-size: 13px; white-space: nowrap; }
+  .r .v { font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .section { margin-top: 6px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,.09); }
+  .note { margin-top: 10px; color: #a4a9b0; font-size: 11px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <p class="caption">助手消息的操作行 — 徽章在最右侧</p>
+  <div class="row">
+    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg></span>
+    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v11H5a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z"/><path d="M7 10l3.6-6.3A2.4 2.4 0 0 1 14.6 5v4h4.2a2 2 0 0 1 2 2.3l-1.1 7A2 2 0 0 1 17.7 20H7"/></svg></span>
+    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.4"/><circle cx="6" cy="18" r="2.4"/><circle cx="18" cy="8" r="2.4"/><path d="M6 8.4v7.2"/><path d="M18 10.4c0 3.2-2.6 4.6-5.2 5.2"/></svg></span>
+    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="m8 8 4-4 4 4"/><path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/></svg></span>
+
+    <span class="chip is-hot">MCP 门控 0/2</span>
+
+    <span class="meta"><span>用量 180K tok</span><span>23:54</span></span>
+  </div>
+
+  <div class="link"><span class="bar"></span><span class="dash"></span><span>鼠标悬停 → 展开只读详情</span></div>
+
+  <div class="card">
+    <div class="head">
+      <svg class="glyph" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2.5 4h11"/><path d="M2.5 8h6"/><path d="M2.5 12h3"/>
+        <circle cx="12.6" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+      </svg>
+      <span class="title">MCP 工具门控</span>
+      <span class="value">0/2<span class="unit">服务</span></span>
+    </div>
+    <div class="divider"></div>
+    <div class="r"><span class="k">MCP 服务已开启</span><span class="v">0 / 2</span></div>
+    <div class="r"><span class="k">本轮静默的受管工具</span><span class="v">22 / 22</span></div>
+    <div class="section">
+      <div class="r"><span class="k">mnemon_admin</span><span class="v">关 · 11</span></div>
+      <div class="r"><span class="k">schedule</span><span class="v">关 · 4</span></div>
+    </div>
+    <div class="note">进程级：换顶层会话时清空，重启回到全关</div>
+  </div>
+
+</div>
+</body>
+</html>

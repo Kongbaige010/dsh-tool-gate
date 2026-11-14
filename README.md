@@ -67,13 +67,11 @@ Four meta tools are registered; you can also just ask in natural language:
 
 ## The badge
 
-Every assistant message gets one read-only chip at the end of its action row:
+Every assistant message gets one read-only chip at the end of its action row; hovering it opens a read-only detail card:
 
-```
-[copy] [like] [dislike] [branch]   ( MCP gate 2/9 )   usage 124K tok   22:14
-```
+![The chip in the action row, and the detail card it opens on hover](docs/images/badge-light.png)
 
-- `2/9` — how many of the 9 managed servers are open;
+- `0/2` — how many of the managed servers are open (2 managed, 0 open in the picture);
 - hover shows the detail: open servers, tools silenced this turn, low-frequency group state;
 - click re-fetches immediately (otherwise polled every 20 s).
 

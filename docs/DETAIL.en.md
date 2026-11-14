@@ -22,11 +22,9 @@ Removes the JSON Schemas of managed tools from every prompt and puts them back o
 
 ## Badge
 
-At the end of the assistant action row:
+At the end of the assistant action row; hovering opens the read-only detail card:
 
-```
-[copy] [like] [dislike] [branch]   ( MCP gate 2/9 )   usage 124K tok  22:14
-```
+![The chip in the action row, and the detail card it opens on hover](images/badge-light.png)
 
 - hover: open servers, tools silenced this turn, low-frequency group state;
 - click: refresh immediately (otherwise polled every 20 s);
