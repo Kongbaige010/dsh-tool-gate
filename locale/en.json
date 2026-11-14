@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Tool gate (MCP + low-frequency tools)",
+    "description": "Managed MCP services and low-frequency tool groups stay out of the prompt until opened and are closed when no longer needed. A read-only badge in the assistant action row shows what is open and how many tools are silenced, and the current instance URL is recorded for a stable entry point.",
+    "detail": "docs/DETAIL.en.md"
+  }
+}
