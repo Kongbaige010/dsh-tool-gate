@@ -43,7 +43,7 @@ window.__ModuleLoader__.load({
       pendingTitle: '等待本轮提示词装配完成后才能统计受管工具数（点一下可立即重试）',
       badge: 'MCP 门控',
       titleHeader: 'MCP 工具门控',
-      titleHeaderNote: '进程级：换顶层会话时清空，重启回到全关',
+      titleHeaderNote: '进程级：换顶层会话时开启状态重置；重启回到配置',
       services: 'MCP 服务已开启',
       silenced: '本轮静默的受管工具',
       groups: '低频工具组',
@@ -51,6 +51,7 @@ window.__ModuleLoader__.load({
       on: '开',
       off: '关',
       none: '无',
+      idle: '未纳管',
       stateOffline: '状态端点不可用',
     }
 
@@ -62,7 +63,7 @@ window.__ModuleLoader__.load({
       pendingTitle: 'Waiting for the next prompt assembly to count managed tools (click to retry)',
       badge: 'MCP gate',
       titleHeader: 'MCP tool gate',
-      titleHeaderNote: 'Process-wide: cleared on a new session, all off after restart',
+      titleHeaderNote: 'Process-wide: open state resets on a new session; restart returns to config',
       services: 'MCP services open',
       silenced: 'Managed MCP tools silenced this turn',
       groups: 'Low-frequency groups',
@@ -70,6 +71,7 @@ window.__ModuleLoader__.load({
       on: 'on',
       off: 'off',
       none: 'none',
+      idle: 'idle',
       stateOffline: 'State endpoint unavailable',
     }
 
@@ -254,8 +256,8 @@ window.__ModuleLoader__.load({
         h(GateIcon),
         h('span', { style: HEAD_LABEL }, t('titleHeader')),
         h('span', { style: HEAD_VALUE },
-          ready ? `${open}/${servers}` : '—',
-          h('span', { style: HEAD_UNIT }, t('unitServices')),
+          ready ? (servers > 0 ? `${open}/${servers}` : t('idle')) : '—',
+          servers > 0 ? h('span', { style: HEAD_UNIT }, t('unitServices')) : null,
         ),
       )
 
@@ -348,10 +350,10 @@ window.__ModuleLoader__.load({
             ? groups.groups.map((group) => `${group.name} ${group.enabled ? t('on') : t('off')}`).join(' · ')
             : t('none')
 
-          text = `${t('badge')} ${open}/${servers}`
+          text = servers > 0 ? `${t('badge')} ${open}/${servers}` : `${t('badge')} · ${t('idle')}`
           label = [
             t('titleHeader'),
-            `${t('services')}: ${open}/${servers}`,
+            `${t('services')}: ${servers > 0 ? `${open}/${servers}` : t('idle')}`,
             `${t('silenced')}: ${total > 0 ? `${hidden}/${total}` : '—'}`,
             `${t('groups')}: ${groupLabels}`,
           ].join('\n')

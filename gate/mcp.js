@@ -32,8 +32,8 @@
 // 依赖由入口 index.js 统一声明：systemPrompt / tools / agents / webServer。
 
 /**
- * 本插件不内置任何服务名、服务清单或使用场景：受管范围默认覆盖所有
- * `mcp__<server>__*` 工具（自动发现），也可以用 config.gated 显式列出。
+ * 本插件不内置任何服务名、服务清单或使用场景：受管范围默认为空——
+ * 门控不干预任何服务，只有 config.gated 显式列出、或运行时用 mcp_gate 纳入的服务才受管。
  * config.catalog 可选，仅用于给 mcp_services 的输出补上文字说明：
  *   catalog: { '<server>': { title: '…', use: '…' } }
  */
@@ -54,20 +54,32 @@ function parseNames(input) {
 
 export function applyMcpGate(ctx, config) {
   const cfg = config ?? {}
-  // 受管范围：显式配置优先；未配置时「所有 mcp__<server>__* 工具」都受管（自动发现）。
-  const gated = Array.isArray(cfg.gated) ? new Set(cfg.gated) : undefined
+  // 管辖范围：默认「一个都不管」——装了插件不改变任何现有行为。
+  // 只有显式配置的 gated、或运行时用 mcp_gate 纳入的服务才会被门控。
+  // 这是与其它可见性机制（reveal / restrict / 权限插件）共存的前提：
+  // 门控只减自己点名的服务，别人管的东西一根手指都不碰。
+  const managed = new Set(
+    Array.isArray(cfg.gated) ? cfg.gated.map((name) => String(name).toLowerCase()) : [],
+  )
   // 可选的展示文字：{ '<server>': { title, use } }，不影响门控行为。
   const catalog = cfg.catalog ?? {}
   // 例外：永远可见的工具名（受管服务里也不想藏的那些）。
   const alwaysVisible = new Set(cfg.alwaysVisible ?? [])
+  // 宿主自带的系统级能力（桌面控制、CAD 预览）。它们不是"低频工具"：
+  // 默认关掉会让模型突然失去基础能力、且完全无从得知原因（表现为"之前能用，现在不能"）。
+  // 纳入管辖的服务默认关闭（纳管即省配额）；defaultEnabled 用来指定例外。
+  // 默认开启的集合：显式配置优先，未配置时放行系统服务。
+  const defaultEnabled = new Set(
+    Array.isArray(cfg.defaultEnabled) ? cfg.defaultEnabled.map((name) => String(name).toLowerCase()) : [],
+  )
   // 是否注入一行系统提示，告诉模型这套机制的存在。
   const hint = cfg.hint !== false
   // 空闲回收：默认关闭（0 = 纯主动开关，由模型在任务结束时 mcp_disable）。
   // 需要兜底时可在 profile 里配 idleTtlMs（毫秒），例如 3600000 = 1 小时兜底。
   const idleTtlMs = typeof cfg.idleTtlMs === 'number' && cfg.idleTtlMs >= 0 ? cfg.idleTtlMs : 0
 
-  /** 已开启的服务名集合。进程级共享，故子代理天然继承父代理。 */
-  const enabled = new Set()
+  /** 已开启的服务名集合。进程级共享，故子代理天然继承父代理。初始含系统服务。 */
+  const enabled = new Set(defaultEnabled)
   /** 装配中实际出现过的 MCP 服务名（自动发现模式下的服务清单）。 */
   const seenServers = new Set()
   /** 服务名 → 最后一次被调用（或开启）的时间戳，用于空闲回收。 */
@@ -86,14 +98,18 @@ export function applyMcpGate(ctx, config) {
   /** 最近一次装配的计数快照，供界面徽章读取。 */
   let lastCounts = { injected: 0, hidden: 0, total: 0, at: 0 }
 
-  /** 工具名 → 受管服务名；不受管则返回 undefined。MCP 工具名形如 mcp__<server>__<tool>。 */
-  function serverOf(toolName) {
+  /** 纯解析工具名里的服务名，不判是否受管（供列出"可发现的服务"）。 */
+  function mcpServerOf(toolName) {
     if (typeof toolName !== 'string' || !toolName.startsWith('mcp__')) return undefined
     const end = toolName.indexOf('__', 5)
     if (end < 0) return undefined
-    const server = toolName.slice(5, end)
-    if (gated !== undefined && !gated.has(server)) return undefined
-    return server
+    return toolName.slice(5, end)
+  }
+
+  /** 工具名 → 受管服务名；不受管则返回 undefined（不受管 = 一律放行，门控不干预）。 */
+  function serverOf(toolName) {
+    const server = mcpServerOf(toolName)
+    return server !== undefined && managed.has(server) ? server : undefined
   }
 
   /** 定位当前 agent：优先 ctx 上的 agent，回落到最近一次装配见过的 agent。 */
@@ -124,10 +140,9 @@ export function applyMcpGate(ctx, config) {
     }
   }
 
-  /** 受管服务名列表：显式配置优先，否则用装配中实际见到的服务。 */
+  /** 当前受管的服务名列表。 */
   function gatedServers() {
-    if (gated !== undefined) return [...gated]
-    return [...seenServers].sort()
+    return [...managed].sort()
   }
 
   // ── 过滤点：包住 systemPrompt.assemble() ──────────────────────────────────
@@ -169,9 +184,12 @@ export function applyMcpGate(ctx, config) {
     const session = agent?.session
     if (agent !== undefined && session !== undefined) agents.set(session.id, agent)
 
-    // 换顶层会话 → 清空。子代理不是顶层，从而继承父代理的开启状态。
+    // 换顶层会话 → 回到默认集合（不是空集：系统服务始终放行）。子代理不是顶层，从而继承父代理的开启状态。
     if (agent !== undefined && session !== undefined && isRoot(agent)) {
-      if (rootSessionId !== undefined && rootSessionId !== session.id) enabled.clear()
+      if (rootSessionId !== undefined && rootSessionId !== session.id) {
+        enabled.clear()
+        for (const name of defaultEnabled) enabled.add(name)
+      }
       rootSessionId = session.id
     }
 
@@ -182,13 +200,15 @@ export function applyMcpGate(ctx, config) {
     let passed = 0
     for (const tool of all) {
       const name = tool?.name
-      const server = serverOf(name)
+      // 先记录所有见过的 MCP 服务（含未受管的），供 mcp_services 列出可选项。
+      const raw = mcpServerOf(name)
+      if (raw !== undefined) seenServers.add(raw)
+      const server = raw !== undefined && managed.has(raw) ? raw : undefined
       // 不受管，或显式豁免：原样保留。
       if (server === undefined || alwaysVisible.has(name)) {
         tools.push(tool)
         continue
       }
-      seenServers.add(server)
       tally.set(server, (tally.get(server) ?? 0) + 1)
       gatedSeen += 1
       if (allow.has(server)) {
@@ -218,7 +238,11 @@ export function applyMcpGate(ctx, config) {
     lastAssemble =
       `会话 ${session?.id ?? '(无 agent)'}｜装配工具 ${all.length} 个｜受管 ${gatedSeen} 个｜` +
       `放行 ${passed} 个｜隐藏 ${gatedSeen - passed} 个｜当前开启 ${[...allow].join(',') || '（空）'}` +
-      (gatedSeen === 0 ? '｜⚠ 未匹配到受管工具' : '')
+      (managed.size === 0
+        ? '｜门控空转（当前无受管服务）'
+        : gatedSeen === 0
+          ? '｜⚠ 受管服务本次未出现在工具表中'
+          : '')
 
     return { ...assembly, tools }
   }
@@ -239,8 +263,9 @@ export function applyMcpGate(ctx, config) {
         name: 'mcp-tool-gate',
         order: 3000,
         text:
-          'MCP 服务提供的工具默认不载入上下文以节省配额。' +
-          '当任务需要其中某类能力时，先调用 mcp_enable 开启对应服务，工具会在下一步装配时出现。' +
+          'MCP 工具可由门控按需注入以节省配额。门控默认不干预任何服务——只有被 mcp_gate 纳入管辖的服务才会被隐藏。' +
+          '需要这类能力时，先调用 mcp_services 查看现状（受管 / 未受管 / 开启状态），再用 mcp_enable 开启，工具会在下一步装配时出现。' +
+          '若发现某个工具或能力突然不见了，先查 mcp_services：可能是它所属的服务已被纳入管辖、且当前未开启。' +
           '用完即关：该任务不再需要这个服务时，在同一条回复结束前调用 mcp_disable 把它关掉；' +
           '不要因为"也许以后还要用"而留着——需要时再开一次的成本只有一步。',
       }),
@@ -297,36 +322,125 @@ export function applyMcpGate(ctx, config) {
   register({
     name: 'mcp_services',
     description:
-      '列出受管的 MCP 工具服务：服务名、工具数量，以及是否已开启。' +
-      '需要某类 MCP 能力时先看这里，再决定开启哪个服务。',
+      '列出 MCP 工具服务的现状：哪些被门控管辖、哪些未受管（始终可见），各自工具数量与开启状态。' +
+      '需要某类 MCP 能力时先看这里，再决定 mcp_enable 还是 mcp_gate。',
     parameters: { type: 'object', properties: {}, additionalProperties: false },
     output: TEXT_OUTPUT,
     execute() {
       const session = currentSession()
       const tally = session === undefined ? new Map() : (counts.get(session.id) ?? new Map())
-      const entries = gatedServers()
-      const lines = entries.map((server) => {
-        const state = enabled.has(server) ? '已开启' : '未开启'
-        const n = tally.get(server)
-        const count = n === undefined ? '' : ` ${n} 个工具`
+      const managedList = gatedServers()
+      const discovered = [...seenServers].sort()
+      const unmanaged = discovered.filter((server) => !managed.has(server))
+      const lineOf = (server, isManaged) => {
         const meta = catalog[server]
         const title = typeof meta?.title === 'string' ? meta.title : server
         const use = typeof meta?.use === 'string' ? meta.use : 'MCP 服务'
+        const n = tally.get(server)
+        const count = n === undefined ? '' : ` ${n} 个工具`
+        const state = !isManaged ? '未受管·始终可见' : enabled.has(server) ? '已开启' : '未开启'
         return `- ${server} [${state}]${count} — ${title}：${use}`
-      })
-      const opened = entries.filter((server) => enabled.has(server)).length
-      return [
-        `受管 MCP 工具服务（${entries.length} 个，已开启 ${opened} 个）`,
-        ...lines,
+      }
+      const opened = managedList.filter((server) => enabled.has(server)).length
+      const out = [
+        `受管 MCP 工具服务（${managedList.length} 个，已开启 ${opened} 个）`,
+        ...managedList.map((server) => lineOf(server, true)),
+      ]
+      if (managedList.length === 0) out.push('- （无）门控当前空转：没有服务被纳入管辖。')
+      if (unmanaged.length > 0) {
+        out.push('', `可发现但未受管（${unmanaged.length} 个，门控不干预，始终可见）`)
+        out.push(...unmanaged.map((server) => lineOf(server, false)))
+      }
+      out.push(
         '',
-        '用 mcp_enable 开启需要的服务。开启状态是进程级的：所有会话与子代理共享，换新会话时自动清空。',
+        '用 mcp_gate(action="manage", services="…") 把服务纳入管辖（纳入后默认不载入，需 mcp_enable 才可见）；',
+        'mcp_gate(action="unmanage", services="…") 移出管辖。开启状态是进程级的：所有会话共享，换新会话回到 defaultEnabled。',
         '',
         `诊断：装配钩子已执行 ${assembleCount} 次；最近一次 → ${lastAssemble}`,
+      )
+      return out.join('\n')
+    },
+  })
+
+  // ── 元工具 2：管辖范围（"自己选择管控哪些"的入口）────────────────────────
+  register({
+    name: 'mcp_gate',
+    description:
+      '管理门控的管辖范围。默认没有任何服务受管，门控完全不干预。' +
+      'manage=把 MCP 服务纳入管辖（纳入后默认不载入上下文，需要 mcp_enable 才可见）；' +
+      'unmanage=移出管辖（移出后始终可见）；clear=清空全部管辖；list=查看当前范围。',
+    parameters: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          enum: ['manage', 'unmanage', 'clear', 'list'],
+          description: 'manage / unmanage / clear / list',
+        },
+        services: {
+          type: 'string',
+          description: '服务名，逗号/空格分隔；manage 与 unmanage 时需要',
+        },
+      },
+      required: ['action'],
+      additionalProperties: false,
+    },
+    output: TEXT_OUTPUT,
+    execute(args) {
+      const action = String(args?.action ?? '').trim().toLowerCase()
+      const names = parseNames(args?.services)
+      const currentLine = () => {
+        const current = gatedServers()
+        return current.length === 0
+          ? '当前没有服务受管：门控空转，所有 MCP 工具始终可见。'
+          : `当前受管服务（${current.length} 个）：${current.join(', ')}`
+      }
+      if (action === 'list') {
+        const unmanaged = [...seenServers].sort().filter((server) => !managed.has(server))
+        return [
+          currentLine(),
+          unmanaged.length === 0 ? '' : `未受管但可发现：${unmanaged.join(', ')}`,
+        ].filter((part) => part !== '').join('\n')
+      }
+      if (action === 'clear') {
+        const removed = gatedServers()
+        managed.clear()
+        enabled.clear()
+        for (const name of defaultEnabled) enabled.add(name)
+        return removed.length === 0
+          ? '管辖范围本来就是空的，无需清空。'
+          : `已清空管辖范围（移除 ${removed.length} 个：${removed.join(', ')}）：门控不再干预任何 MCP 服务。`
+      }
+      if (action !== 'manage' && action !== 'unmanage') {
+        return 'action 只能是 manage / unmanage / clear / list。'
+      }
+      if (names.length === 0) {
+        return `action=${action} 需要提供 services，例如 services="my-server, another-server"。`
+      }
+      const changes = []
+      for (const name of names) {
+        if (action === 'manage') {
+          if (managed.has(name)) continue
+          managed.add(name)
+          changes.push(`+ ${name}`)
+          if (defaultEnabled.has(name)) enabled.add(name)
+        } else if (managed.delete(name)) {
+          enabled.delete(name)
+          lastUsed.delete(name)
+          changes.push(`- ${name}`)
+        }
+      }
+      return [
+        changes.length === 0 ? '范围没有变化。' : `已更新管辖范围：${changes.join('，')}。`,
+        currentLine(),
+        action === 'manage'
+          ? '纳入的服务默认不载入上下文，需要 mcp_enable 开启；下一步装配时生效。'
+          : '移出的服务不再被门控干预，始终可见。',
       ].join('\n')
     },
   })
 
-  // ── 元工具 2：开启服务 ────────────────────────────────────────────────────
+  // ── 元工具 3：开启服务 ────────────────────────────────────────────────────
   register({
     name: 'mcp_enable',
     description:
@@ -357,7 +471,7 @@ export function applyMcpGate(ctx, config) {
 
       const targets = wantsAll ? known : names
       for (const target of targets) {
-        if (gated !== undefined && !gated.has(target)) {
+        if (!managed.has(target)) {
           unknown.push(target)
           continue
         }
@@ -384,7 +498,7 @@ export function applyMcpGate(ctx, config) {
     },
   })
 
-  // ── 元工具 3：关闭服务 ────────────────────────────────────────────────────
+  // ── 元工具 4：关闭服务 ────────────────────────────────────────────────────
   register({
     name: 'mcp_disable',
     description:
@@ -412,7 +526,7 @@ export function applyMcpGate(ctx, config) {
       const targets = wantsAll ? gatedServers() : names
 
       for (const target of targets) {
-        if (gated !== undefined && !gated.has(target)) {
+        if (!managed.has(target)) {
           unknown.push(target)
           continue
         }

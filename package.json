@@ -1,6 +1,6 @@
 {
   "name": "@kongbaige010/dsh-tool-gate",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": false,
   "description": "Tool gating for DeepSeekRuntime: managed MCP services and low-frequency tool groups stay out of the prompt until opened, plus a read-only badge in the assistant action row and a fixed entry point for the current instance.",
   "type": "module",
@@ -25,7 +25,8 @@
   },
   "files": [
     "README.md",
-    "README.zh.md",
+    "README_en.md",
+    "INSTALL.md",
     "index.js",
     "gate",
     "client.js",

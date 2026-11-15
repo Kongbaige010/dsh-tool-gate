@@ -1,85 +1,84 @@
-# dsh-tool-gate
+# dsh-tool-gate [![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![DSH](https://img.shields.io/badge/DSH-0.2.2--rc.3-4B32C3)](https://github.com/deepseek-ai)
-[![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)](package.json)
+[![npm version](https://img.shields.io/npm/v/@kongbaige010/dsh-tool-gate?logo=npm)](https://www.npmjs.com/package/@kongbaige010/dsh-tool-gate) [![npm downloads](https://img.shields.io/npm/dm/@kongbaige010/dsh-tool-gate?logo=npm)](https://www.npmjs.com/package/@kongbaige010/dsh-tool-gate) [![GitHub stars](https://img.shields.io/github/stars/Kongbaige010/dsh-tool-gate?style=social)](https://github.com/Kongbaige010/dsh-tool-gate)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![DSH](https://img.shields.io/badge/DSH-0.2.2--rc.3-4B32C3)](https://github.com/deepseek-ai) [![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)](package.json)
 
-English | [中文](README.zh.md)
+[English](README_en.md) · **中文**
 
-Tool gating for [DeepSeekRuntime (DSH)](https://github.com/deepseek-ai): **MCP tool schemas** and **low-frequency tool groups** stay out of the prompt by default, and are opened only when a task actually needs them.
+给 [DeepSeekRuntime（DSH）](https://github.com/deepseek-ai) 的 **MCP 工具**与**低频工具组**做「按需注入」：默认一个都不进提示词，任务真的需要时才开。
 
-## The problem it solves
+## 解决什么问题
 
-An MCP server is not "one server, one tool" — it ships dozens to hundreds of tools, each with a full JSON Schema. Measured on a real profile with the default full injection:
+MCP 服务不是「一个服务一个工具」，而是**一个服务挂几十到上百个工具**，每个工具都带完整 JSON Schema。默认全量注入时的实测数据：
 
-| Content | Size | Prompt cost per turn |
+| 内容 | 规模 | 每轮上下文成本 |
 | --- | --- | --- |
-| One mid-sized MCP server | 50–100 tools | tens of thousands of characters |
-| Several remote servers stacked | 300+ tools | well over 100k characters |
-| **A typical multi-server profile** | | **easily 50k+ tokens** |
+| 单个中型 MCP 服务 | 50~100 个工具 | 数万字符 |
+| 多个远程服务叠加 | 300+ 个工具 | 十万字符以上 |
+| **一个常见的多服务 profile** | | **轻易达到 5 万 token 以上** |
 
-A task usually needs 0–3 of them. This plugin turns that cost into 0 and opens a server only when the task actually asks for it.
+而一次任务通常只用到其中 0~3 个工具。这个插件把这笔开销变成 0，只在任务真的需要时按服务打开。
 
-## Install
+## 安装
 
-Three sources work; pick one.
+三种来源都支持，任选一种。
 
-**1. Straight from GitHub (no clone, recommended today)**
+**方式一：直接从 GitHub 装（不用克隆，当前最省事）**
 
-Ask the agent:
+对 Agent 说：
 
 ```text
 plugin_manager(install_bundle, target="github:Kongbaige010/dsh-tool-gate")
 ```
 
-or in the UI: **Plugins** → **Add plugin** → paste `https://github.com/Kongbaige010/dsh-tool-gate`.
+或界面操作：**插件** → **添加插件** → 粘贴 `https://github.com/Kongbaige010/dsh-tool-gate`。
 
-**2. From a local directory** (for development or offline machines)
+**方式二：从本地目录装（开发或离线机器）**
 
 ```text
 git clone https://github.com/Kongbaige010/dsh-tool-gate
-plugin_manager(install_bundle, target="<absolute path to the cloned directory>")
+plugin_manager(install_bundle, target="<克隆下来的目录绝对路径>")
 ```
 
-or **Plugins** → **Add plugin** → choose that directory.
+或 **插件** → **添加插件** → 选择该目录。
 
-**3. From npm** (once published)
+**方式三：从 npm 装（发布之后）**
 
 ```text
 plugin_manager(install_bundle, target="@kongbaige010/dsh-tool-gate")
 ```
 
-**Restart DSH after installing** — the bundle has a Host half and a Client half, and the badge appears only after the page reloads.
+**装好后必须重启 DSH**——插件由 Host 侧与 Client 侧两部分组成，徽章要等页面重新加载后才出现。
 
-## Usage
+## 用法
 
-Four meta tools are registered; you can also just ask in natural language:
+注册四个元工具，也可以直接用自然语言要求：
 
-| Tool | Purpose |
+| 工具 | 作用 |
 | --- | --- |
-| `mcp_services` | list the managed servers, their tool counts and open/closed state |
-| `mcp_enable(services)` | open one or more services (`all` supported) |
-| `mcp_disable(services)` | close them |
-| `tool_gate(action, group)` | list/open/close low-frequency groups (Mnemon admin, schedules) |
+| `mcp_services` | 列出受管服务、工具数与当前开/关状态 |
+| `mcp_enable(services)` | 开启一个或多个服务（支持 `all`） |
+| `mcp_disable(services)` | 关闭 |
+| `tool_gate(action, group)` | 低频组（Mnemon 管理 / 定时提醒）的列出与开关 |
 
-- **Next step, not this step**: the tool table of the current step has already been sent, so a newly opened service becomes visible and callable at the **next step** — within the same conversation turn.
-- **Close it when done**: there is no timer. The model closes the service with `mcp_disable` when the task no longer needs it; reopening later costs one step.
+- **下一步生效，不是同步生效**：当前 step 的工具表已经发出去了，新开的服务要到**下一个 step**才可见、可调用——但这仍在同一次对话回合内。
+- **用完即关**：没有超时机制，任务不再需要时由模型 `mcp_disable` 关闭；需要时再开一次的成本只有一步。
 
-## The badge
+## 徽章
 
-Every assistant message gets one read-only chip at the end of its action row; hovering it opens a read-only detail card:
+每条助手回复的操作行末尾会多一枚只读徽章，鼠标悬停即展开只读详情：
 
-![The chip in the action row, and the detail card it opens on hover](docs/images/badge-light.png)
+![徽章在操作行中的位置，以及悬停展开的详情卡片](docs/images/badge-light.png)
 
-- `0/2` — how many of the managed servers are open (2 managed, 0 open in the picture);
-- hover shows the detail: open servers, tools silenced this turn, low-frequency group state;
-- click re-fetches immediately (otherwise polled every 20 s).
+- `0/2` = 受管服务里开了几个（图中为 2 个受管、0 个已开）；
+- 悬停看明细：已开启服务、本轮静默的工具数、低频组状态；
+- 点击立即重新拉取（默认每 20 秒轮询一次）。
 
-It is display-only. It reads two read-only GET endpoints: `/plugin/tool-gate/mcp` and `/plugin/tool-gate/groups`.
+徽章只做显示，不改变门控行为。它读两个只读 GET 端点：`/plugin/tool-gate/mcp` 与 `/plugin/tool-gate/groups`。
 
-## Fixed entry point
+## 固定入口
 
-The Desktop host starts with `--port 0`, so the port changes on every restart and old bookmarks or tabs die. Once the listener is up, this bundle writes the **authenticated URL of the current instance** to `~/.dsh/web-url.txt`, which a tiny launcher can open:
+DSH 桌面宿主以 `--port 0` 启动，每次重启都换端口，旧书签/旧标签页会失效。插件在监听就绪后把**当前实例的带令牌地址**写入 `~/.dsh/web-url.txt`，配合一个很短的启动脚本即可一键打开当前实例：
 
 ```bat
 @echo off
@@ -94,46 +93,51 @@ echo No recorded address. Start DSH once first.
 pause
 ```
 
-> That file contains the browser access token. Keep it in your own profile directory; never commit or sync it to a public place.
+> 该文件含浏览器访问令牌，请只放在自己的用户目录，不要提交到仓库或同步到公开位置。
 
-## How it works
+## 原理
 
-1. **Host** wraps `systemPrompt.assemble()`: it calls the original method to get the complete assembly (with `tools`), then drops the managed schemas that belong to closed servers.
-   It deliberately does **not** listen on the `system-prompt/assemble` waterfall: current `dsh-system-prompt` builds `tools` **after** that waterfall resolves, so `assembly.tools` is always `undefined` there and a filter written against it silently keeps every schema. (That was the bug fixed in 0.2.)
-2. **Client** appends one chip to the `conversation.chat.assistant-actions` list slot. Read-only, no absolute positioning, and every failure degrades to `MCP ?` instead of throwing — a throwing slot entry would blank its row.
+1. **Host 侧**包住 `systemPrompt.assemble()`：先调用原方法拿到含 `tools` 的完整装配结果，再把「受管且未开启」服务的 schema 裁掉。
+   **只裁自己管辖的服务**：管辖范围默认为空，此时门控一个 schema 都不裁、行为与没装插件一致；只有 `gated` 列出或用 `mcp_gate` 纳入的服务才受管。这样它不会覆盖别人的可见性决策（`reveal` / `restrict` / 权限插件）——0.3.0 正是因为「默认接管全部 MCP 服务」静默吞掉了 `windows` 桌面控制的 18 个工具。
+   它**刻意不**监听 `system-prompt/assemble` 瀑布：新版权 `dsh-system-prompt` 把 `tools` 放在瀑布返回之后才合并，`assembly.tools` 在那里恒为 `undefined`，照它写的过滤器会静默失效、一个 schema 都不裁（这就是 0.2 修掉的那个 bug）。**这不是风格偏好，而是唯一能拿到工具的介入点。**
+2. **Client 侧**往 `conversation.chat.assistant-actions`（list 插槽）追加一枚 chip。只读、不做绝对定位；任何失败都降级成 `MCP ?` 而不是抛错——slot 条目一旦抛错，整行会变空白。
 
-## Configuration
+## 配置
 
-Override the plugin `config` in the profile's `cordis.patch.yml`:
+在 profile 的 `cordis.patch.yml` 里覆盖本插件的 `config`：
 
 ```yaml
 - id: tool-gate
   config:
     mcp:
-      gated: [my-server, another-server]   # optional; omit to manage every MCP server
-      catalog:                      # optional display text for mcp_services
-        my-server: { title: 'My server', use: 'what it can do' }
-      alwaysVisible: []             # tool names always visible even when managed
-      hint: true                    # inject the one-line system prompt hint
-      idleTtlMs: 0                  # >0 enables an idle safety net (ms); 0 = manual only
+      gated: [my-server, another-server]   # 受管服务清单；省略=不管任何服务（门控空转）
+      defaultEnabled: []                   # 纳管后默认开启的服务；省略=纳管即关闭
+      catalog:                      # 可选：仅给 mcp_services 的输出补充说明文字
+        my-server: { title: '我的服务', use: '它能做什么' }
+      alwaysVisible: []             # 即使受管也始终可见的工具名
+      hint: true                    # 是否注入那行系统提示
+      idleTtlMs: 0                  # >0 时空闲兜底自动关闭（毫秒），默认 0=纯手动
     groups:
       alwaysVisible: []
       hint: true
 ```
 
-## Security and limitations
+运行时也能改管辖范围，不必重启：`mcp_gate(action="manage", services="my-server")` 纳入、`unmanage` 移出、`clear` 清空、`list` 查看。
 
-- The two status endpoints are **not** behind the GUI token check. They are read-only, bind to loopback only, and send `no-store`; no CORS header is set, so a web page cannot read them cross-origin. Other local processes still can. Add same-origin validation or delete the routes if that matters to you.
-- `~/.dsh/web-url.txt` contains a browser token in plain text (same trust level as `~/.dsh/.credentials.yaml`).
-- **Hidden is not disabled**: a gated tool stays registered and executable; a model that remembers the name from history may still call it. Combine with `tools.restrict()` / `tools.guard()` if you need execution to be blocked too.
-- **The unit of gating is a server**, not an individual tool: opening a server for one small feature still costs every schema it ships.
-- The Host half monkey-patches `systemPrompt.assemble`; it depends on that method name. After a major DSH upgrade, check that the badge tooltip still reports a non-zero "silenced" count.
-- Zero dependencies, no install scripts, no `child_process`, no `eval`. The only file it writes is `~/.dsh/web-url.txt`.
+## 安全与限制
 
-## Verified on
+- 两个状态端点**不经过** GUI 的令牌认证。它们只读、只监听 loopback、响应 `no-store`；没有设置 CORS 头，所以网页跨源读不到内容，但本机其它进程能读到。介意的话请自行加同源校验或删除这两条路由。
+- `~/.dsh/web-url.txt` 是明文令牌（与 `~/.dsh/.credentials.yaml` 同一信任级别）。
+- **隐藏 ≠ 禁用**：被门控的工具仍在注册表里、执行通道完好，模型若从历史中记得名字仍可能调用成功。要让执行也拦住，需叠加 `tools.restrict()` / `tools.guard()`。
+- **默认不干预**：`gated` 为空时门控不裁任何工具，装了插件与没装行为一致。纳入管辖才开始省配额；`windows`（桌面控制）、`cad`（CAD 预览）这类宿主能力要管控必须显式点名，避免模型突然失去基础工具却毫无提示。
+- **门控粒度是服务**，不是单个工具：为一个小功能开一个服务，仍要付它全部 schema 的成本。
+- Host 侧是猴补丁，依赖 `systemPrompt.assemble` 这个方法名。DSH 大版本升级后，请看徽章悬停里的「静默 N」是否仍非零。
+- 零依赖、无安装脚本、无 `child_process`、无 `eval`；唯一写入的文件是 `~/.dsh/web-url.txt`。
 
-- DSH `0.2.2-rc.3` (Windows x64 desktop build, Web UI)
-- Multiple MCP servers (local stdio and remote streamable-http), hundreds of tools in total
+## 已验证环境
+
+- DSH `0.2.2-rc.3`（Windows x64 桌面版，Web 界面）
+- 多个 MCP 服务（本地 stdio 与远程 streamable-http 混合），工具数以百计
 
 ## License
 
